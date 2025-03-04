@@ -1,3 +1,4 @@
+import os
 import json
 from datasets import load_dataset
 
@@ -11,7 +12,10 @@ class RareDataset():
             if dataset_name in ["RAMEDIS", "MME", "HMS", "LIRICAL", "PUMCH_ADM"]:
                 self.data = load_dataset('chenxz/RareBench', dataset_name, split='test')
             else:
-                raise ERROR("Dataset not found")
+                raise RuntimeError("Dataset not found")
+        elif (dataset_path == 'HPOmics'):
+            with open('/Software/RareBench/data/' + dataset_name + ".json") as fp:
+                self.data = json.load(fp)
         else:
             with open(dataset_path, "r", encoding="utf-8-sig") as f:
                 self.data = json.load(f)
@@ -19,8 +23,8 @@ class RareDataset():
             self.patient = self.load_ehr_phenotype_data()
 
     def load_ehr_phenotype_data(self):
-        phenotype_mapping = json.load(open("mapping/phenotype_mapping.json", "r", encoding="utf-8-sig"))
-        disease_mapping = json.load(open("mapping/disease_mapping.json", "r", encoding="utf-8-sig"))
+        phenotype_mapping = json.load(open("mapping/phenotype_mapping_20231009.json", "r", encoding="utf-8-sig"))
+        disease_mapping = json.load(open("mapping/disease_mapping_20231009.json", "r", encoding="utf-8-sig"))
 
         patient = []
        

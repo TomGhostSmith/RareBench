@@ -10,7 +10,7 @@ class Local_llm_handler:
         with open("mapping/local_llm_path.json", "r") as f:
             local_llm_path = json.load(f)
         self.model_path = local_llm_path[model_name]
-        return None
+        # return None
         
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=True)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -27,6 +27,8 @@ class Local_llm_handler:
 
         elif self.model_name in ["clinical-T5"]:
             self.model = T5ForConditionalGeneration.from_pretrained(self.model_path, from_flax=True)
+        elif self.model_name in ["glm-4-9b"]:
+            self.model = AutoModel.from_pretrained(self.model_path, trust_remote_code=True, attn_implementation="eager", device_map="auto")
         self.model.eval()
 
     def get_completion(self, system_prompt, prompt, seed=42):
@@ -68,6 +70,20 @@ class Local_llm_handler:
                 generate_ids = self.model.generate(inputs.input_ids, max_new_tokens=4096)
                 result = self.tokenizer.decode(generate_ids[0])
                 print(result)
+
+            elif self.model_name in ["glm-4-9b"]:
+                messages = [
+                    {"role": "user", "content": system_prompt + prompt}
+                ]
+                model_inputs = self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=True, return_tensors="pt")
+                model_inputs = model_inputs.to(self.model.device)
+                # self.model.to(self.device)
+
+                generated_ids = self.model.generate(model_inputs, max_new_tokens=1000, do_sample=True)
+                result = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+                result = result.replace(system_prompt + prompt, "")
+                result = result.replace("[INST]", "")
+                result = result.replace("[/INST]", "")
                 
             print(f'Local LLM {self.model_name} time: {time.time() - t}')
             return result

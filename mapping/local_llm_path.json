@@ -7,5 +7,6 @@
     "clinical-T5": "/data/data2-backup/llm/ClinicalT5-large",
     "huatuogpt2-7b": "/data/data2-backup/llm/HuatuoGPT2-7B",
     "biomistral-7b": "/data/data2-backup/llm/BioMistral-7B",
-    "medalpaca-7b": "/data/data2-backup/llm/medalpaca-7b"
+    "medalpaca-7b": "/data/data2-backup/llm/medalpaca-7b",
+    "glm-4-9b": "/Data/Sland/glm-4-9b-chat"
 }

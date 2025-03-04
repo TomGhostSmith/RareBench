@@ -1,6 +1,6 @@
-import openai
-import zhipuai
-import google.generativeai as genai
+# import openai
+# import zhipuai
+# import google.generativeai as genai
 import time
 
 class Openai_api_handler:

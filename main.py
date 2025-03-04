@@ -50,7 +50,7 @@ def diagnosis_metric_calculate(folder, judge_model="chatgpt"):
         else:
             pattern = r'\b(?:10|[1-9])\b'
             predict_rank = re.findall(pattern, predict_rank)
-            if redict_rank not in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
+            if predict_rank not in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
                 res["predict_rank"] = None
                 print(file)
                 raise Exception("predict_rank error")
@@ -168,8 +168,8 @@ def run_task(task_type, dataset:RareDataset, handler, results_folder, few_shot, 
             if type(handler) == Openai_api_handler:
                 print("total tokens: ", handler.gpt4_tokens, handler.chatgpt_tokens, handler.chatgpt_instruct_tokens)
             
-        if eval:
-            diagnosis_metric_calculate(results_folder, judge_model=judge_model)
+        # if eval:
+        #     diagnosis_metric_calculate(results_folder, judge_model=judge_model)
         print("diagnosis ERR_CNT: ", ERR_CNT)
     elif task_type == "mdt":
         pass
@@ -178,12 +178,15 @@ def run_task(task_type, dataset:RareDataset, handler, results_folder, few_shot, 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task_type', type=str, default="diagnosis", choices=["diagnosis", "mdt"])
-    parser.add_argument('--dataset_name', type=str, default="PUMCH_ADM", choices=["RAMEDIS", "MME", "HMS", "LIRICAL", "PUMCH_ADM"])
+    # parser.add_argument('--dataset_name', type=str, default="PUMCH_ADM", choices=["RAMEDIS", "MME", "HMS", "LIRICAL", "PUMCH_ADM"])
+    parser.add_argument('--dataset_name', type=str, default="PUMCH_ADM")
     parser.add_argument('--dataset_type', type=str, default="PHENOTYPE", choices=["EHR", "PHENOTYPE", "MDT"])
     parser.add_argument('--dataset_path', default=None)
     parser.add_argument('--results_folder', default='./results/PUMCH')
-    parser.add_argument('--model', type=str, default="chatgpt", choices=["gpt4", "chatgpt", "glm4", "glm3_turbo", "gemini_pro", "mistral-7b", "chatglm3-6b", "llama2-7b", "llama2-13b", "llama2-70b", "clinical-T5", "huatuogpt2-7b", "biomistral-7b", "medalpaca-7b"])
-    parser.add_argument('--judge_model', type=str, default="chatgpt", choices=["gpt4", "chatgpt"])
+    # parser.add_argument('--model', type=str, default="chatgpt", choices=["gpt4", "chatgpt", "glm4", "glm3_turbo", "gemini_pro", "mistral-7b", "chatglm3-6b", "llama2-7b", "llama2-13b", "llama2-70b", "clinical-T5", "huatuogpt2-7b", "biomistral-7b", "medalpaca-7b"])
+    parser.add_argument('--model', type=str, default="chatgpt")
+    # parser.add_argument('--judge_model', type=str, default="chatgpt", choices=["gpt4", "chatgpt"])
+    parser.add_argument('--judge_model', type=str, default="chatgpt")
     parser.add_argument('--few_shot', type=str, default="none", choices=["none", "random", "dynamic", "medprompt", "auto-cot"])
     parser.add_argument('--cot', type=str, default="none", choices=["none", "zero-shot"])
     parser.add_argument('--eval', action='store_true')
@@ -197,6 +200,8 @@ def main():
     elif args.model in ["gemini_pro"]:
         handler = Gemini_api_handler(args.model)
     elif args.model in ["mistral-7b", "chatglm3-6b", "llama2-7b", "llama2-13b", "llama2-70b", "clinical-T5", "huatuogpt2-7b", "biomistral-7b", "medalpaca-7b"]:
+        handler = Local_llm_handler(args.model)
+    elif args.model in ["glm-4-9b"]:
         handler = Local_llm_handler(args.model)
 
     dataset = RareDataset(args.dataset_name, args.dataset_path, args.dataset_type)
