@@ -21,6 +21,8 @@ class RareDataset():
                 self.data = json.load(f)
         if self.dataset_type == "PHENOTYPE":
             self.patient = self.load_ehr_phenotype_data()
+        else:
+            self.patient = self.data
 
     def load_ehr_phenotype_data(self):
         phenotype_mapping = json.load(open("mapping/phenotype_mapping_20231009.json", "r", encoding="utf-8-sig"))

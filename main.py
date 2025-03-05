@@ -8,6 +8,7 @@ from prompt import RarePrompt
 import json
 import numpy as np
 import re
+from tqdm import tqdm
 
 np.random.seed(42)
 
@@ -119,7 +120,7 @@ def run_task(task_type, dataset:RareDataset, handler, results_folder, few_shot, 
         print("total patient: ", len(dataset.patient))
         ERR_CNT = 0
         questions = []
-        for i, patient in enumerate(dataset.patient):
+        for i, patient in tqdm(enumerate(dataset.patient), total=len(dataset.patient)):
             if handler is None:
                 print("handler is None")
                 break
@@ -164,7 +165,7 @@ def run_task(task_type, dataset:RareDataset, handler, results_folder, few_shot, 
                 "predict_rank": predict_rank
             }
             json.dump(res, open(result_file, "w", encoding="utf-8-sig"), indent=4, ensure_ascii=False)
-            print(f"patient {i} finished")
+            # print(f"patient {i} finished")
             if type(handler) == Openai_api_handler:
                 print("total tokens: ", handler.gpt4_tokens, handler.chatgpt_tokens, handler.chatgpt_instruct_tokens)
             
@@ -179,14 +180,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task_type', type=str, default="diagnosis", choices=["diagnosis", "mdt"])
     # parser.add_argument('--dataset_name', type=str, default="PUMCH_ADM", choices=["RAMEDIS", "MME", "HMS", "LIRICAL", "PUMCH_ADM"])
-    parser.add_argument('--dataset_name', type=str, default="PUMCH_ADM")
+    parser.add_argument('--dataset_name', type=str, default="data3-subset")
     parser.add_argument('--dataset_type', type=str, default="PHENOTYPE", choices=["EHR", "PHENOTYPE", "MDT"])
-    parser.add_argument('--dataset_path', default=None)
-    parser.add_argument('--results_folder', default='./results/PUMCH')
+    parser.add_argument('--dataset_path', default="HPOmics")
+    parser.add_argument('--results_folder', default='./results')
     # parser.add_argument('--model', type=str, default="chatgpt", choices=["gpt4", "chatgpt", "glm4", "glm3_turbo", "gemini_pro", "mistral-7b", "chatglm3-6b", "llama2-7b", "llama2-13b", "llama2-70b", "clinical-T5", "huatuogpt2-7b", "biomistral-7b", "medalpaca-7b"])
-    parser.add_argument('--model', type=str, default="chatgpt")
+    parser.add_argument('--model', type=str, default="baichuan-2-13b")
     # parser.add_argument('--judge_model', type=str, default="chatgpt", choices=["gpt4", "chatgpt"])
-    parser.add_argument('--judge_model', type=str, default="chatgpt")
+    parser.add_argument('--judge_model', type=str, default="glm-4-9b")
     parser.add_argument('--few_shot', type=str, default="none", choices=["none", "random", "dynamic", "medprompt", "auto-cot"])
     parser.add_argument('--cot', type=str, default="none", choices=["none", "zero-shot"])
     parser.add_argument('--eval', action='store_true')
@@ -195,13 +196,13 @@ def main():
 
     if args.model in ["gpt4", "chatgpt"]:
         handler = Openai_api_handler(args.model)
-    elif args.model in ["glm4", "glm3_turbo"]:
-        handler = Zhipuai_api_handler(args.model)
-    elif args.model in ["gemini_pro"]:
-        handler = Gemini_api_handler(args.model)
-    elif args.model in ["mistral-7b", "chatglm3-6b", "llama2-7b", "llama2-13b", "llama2-70b", "clinical-T5", "huatuogpt2-7b", "biomistral-7b", "medalpaca-7b"]:
-        handler = Local_llm_handler(args.model)
-    elif args.model in ["glm-4-9b"]:
+    # elif args.model in ["glm4", "glm3_turbo"]:
+    #     handler = Zhipuai_api_handler(args.model)
+    # elif args.model in ["gemini_pro"]:
+    #     handler = Gemini_api_handler(args.model)
+    # elif args.model in ["mistral-7b", "chatglm3-6b", "llama2-7b", "llama2-13b", "llama2-70b", "clinical-T5", "huatuogpt2-7b", "biomistral-7b", "medalpaca-7b"]:
+    #     handler = Local_llm_handler(args.model)
+    elif args.model in ["glm-4-9b", "baichuan-2-13b"]:
         handler = Local_llm_handler(args.model)
 
     dataset = RareDataset(args.dataset_name, args.dataset_path, args.dataset_type)
@@ -222,6 +223,8 @@ def main():
         cot = "_cot"
     results_folder = os.path.join(args.results_folder, args.dataset_name, args.model+"_"+args.task_type+few_shot+cot)
     run_task(args.task_type, dataset, handler, results_folder, args.few_shot, args.cot, args.judge_model, args.eval)
+
+    handler.close()
 
     if args.model in ["gpt4", "chatgpt"]:
         print(f"OpenAI API total tokens: {handler.gpt4_tokens}", f"ChatGPT API total tokens: {handler.chatgpt_tokens}")
