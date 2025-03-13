@@ -62,7 +62,7 @@ class Local_llm_handler:
             self.modelServer = ModelServer("conda run -n base python /Software/Baichuan2/server.py", cwd="/Software/Baichuan2")
             
         
-        self.modelServer.start(port=11000)
+        # self.modelServer.start(port=11000)
         print(f"{model_name} server started")
 
 
@@ -149,7 +149,8 @@ class Local_llm_handler:
                 messages = [
                     {"role": "user", "content": system_prompt + prompt}
                 ]
-                URL = "http://localhost:11000/chat"
+                # URL = "http://localhost:11000/chat"
+                URL = "http://10.176.62.115:11000/chat"
                 try:
                     response = requests.post(URL, json=messages, timeout=60)
                     if (response.status_code == 200):

@@ -11,7 +11,7 @@ def diagnosis_evaluate(predict_diagnosis, golden_diagnosis, handler):
     prompt += f'Predicted diseases: {predict_diagnosis}\n'
     prompt += f'Standard diagnosis: {golden_diagnosis}\n'
     
-    print("Begin evaluation.....")
+    # print("Begin evaluation.....")
     rank = handler.get_completion(system_prompt, prompt)
     rank = rank.replace("\n", "")
     

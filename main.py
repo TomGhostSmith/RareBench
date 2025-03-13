@@ -12,8 +12,22 @@ from tqdm import tqdm
 
 np.random.seed(42)
 
-def diagnosis_metric_calculate(folder, judge_model="chatgpt"):
-    handler = Openai_api_handler(judge_model)
+def extractRank(content):
+    result = "N/A"
+    if content is not None:
+        if "否" in content or "No" in content:
+            result = 11
+        else:
+            pattern = r'\b(?:10|[1-9])\b'
+            content = re.findall(pattern, content)
+            if (len(content) == 1 and content[0] in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]):
+                result = int(content[0])
+    return result
+
+
+def diagnosis_metric_calculate(folder, judge_model, targetDisease=None, forceReevaluate=False):
+    # handler = Openai_api_handler(judge_model)
+    handler = Local_llm_handler(judge_model)
     
     CNT = 0
     metric = {}
@@ -25,48 +39,61 @@ def diagnosis_metric_calculate(folder, judge_model="chatgpt"):
     Nephrology = range(45, 60)
     Hematology = range(60, 75)
 
-    for file in os.listdir(folder):
+
+    for file in tqdm(sorted(os.listdir(folder))):
         file = os.path.join(folder, file)
-        res = json.load(open(file, "r", encoding="utf-8-sig"))
+        with open(file, "r", encoding="utf-8-sig") as fp:
+            res = json.load(fp)
     
-        predict_rank = res["predict_rank"]
+        predict_rank = res.get(f"predict_rank_{judge_model}")
+        if ("predict_rank_glm-4-9b" not in res):
+            if (res[f"predict_rank"] is not None):
+                res["predict_rank_glm-4-9b"] = res["predict_rank"]
+                res["predict_rank"] = None
+            else:
+                res["predict_rank_glm-4-9b"] = None
         if res['predict_diagnosis'] is None:
             print(file, "predict_diagnosis is None")
-        
-        if predict_rank is None:
-            predict_rank = diagnosis_evaluate(res["predict_diagnosis"], res["golden_diagnosis"], handler)
-            res["predict_rank"] = predict_rank
-            json.dump(res, open(file, "w", encoding="utf-8-sig"), indent=4, ensure_ascii=False)
-        
-        if predict_rank not in ["否", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "No"]:
-            print(file)
-            CNT += 1
-            # res["predict_rank"] = predict_rank[0]
-            # res["predict_rank"] = "否"
-            # res["predict_rank"] = None
-            # json.dump(res, open(file, "w", encoding="utf-8-sig"), indent=4, ensure_ascii=False)
 
-        if "否" in predict_rank or "No" in predict_rank:
-            recall_top_k.append(11)
-        else:
-            pattern = r'\b(?:10|[1-9])\b'
-            predict_rank = re.findall(pattern, predict_rank)
-            if predict_rank not in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
-                res["predict_rank"] = None
-                print(file)
-                raise Exception("predict_rank error")
-            predict_rank = predict_rank[0]
-            recall_top_k.append(int(predict_rank))
+
+        # if res["golden_diagnosis"] == "neuromuscular disease":
+        #     print("skip NMD")
+        #     continue
+        # if res["golden_diagnosis"] == "spinal muscular atrophy":
+        #     print("skip SMA")
+        #     continue
+        # if res["golden_diagnosis"] == "Late-onset Pompeian disease":
+        #     print("skip LOPD")
+        #     continue
+
+        if targetDisease is not None and res["golden_diagnosis"] not in targetDisease:
+            continue
+
+        modified = False
+        if predict_rank is None or forceReevaluate:
+            predict_rank = extractRank(diagnosis_evaluate(res["predict_diagnosis"], res["golden_diagnosis"], handler))
+            modified = True
+        if (predict_rank != "N/A"):
+            recall_top_k.append(predict_rank)
+
+
+        if (modified):
+            res[f"predict_rank_{judge_model}"] = predict_rank
+            print(f"save {file}")
+            with open(file, "w", encoding="utf-8-sig") as fp:
+                json.dump(res, fp, indent=4, ensure_ascii=False)
         
         
     metric['recall_top_1'] = len([i for i in recall_top_k if i <= 1]) / len(recall_top_k)
     metric['recall_top_3'] = len([i for i in recall_top_k if i <= 3]) / len(recall_top_k)
     metric['recall_top_10'] = len([i for i in recall_top_k if i <= 10]) / len(recall_top_k)
-    metric['medain_rank'] = np.median(recall_top_k)
-    print(folder)
-    print(metric)
-    print("predict_rank error: ", CNT)
-    print("evaluate tokens: ", handler.gpt4_tokens, handler.chatgpt_tokens, handler.chatgpt_instruct_tokens)
+    metric['median_rank'] = np.median(recall_top_k)
+    # print(f"Results of {folder} with {len(recall_top_k)} valid samples:")
+    # print(metric, len(recall_top_k))
+    # print("predict_rank error: ", CNT)
+    # print("evaluate tokens: ", handler.gpt4_tokens, handler.chatgpt_tokens, handler.chatgpt_instruct_tokens)
+
+    return metric, len(recall_top_k)
         
 def generate_random_few_shot_id(exclude_id, total_num, k_shot=3):
     few_shot_id = []
